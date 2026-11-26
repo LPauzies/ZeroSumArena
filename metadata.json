@@ -1,0 +1,5 @@
+{
+  "name": "Zero Sum Arena — UEFN",
+  "description": "Implémentation UEFN Verse complète et simulateur interactif pour Zero Sum Arena : persistance, machine à états, Draft Shop, HUD de Synergie, Party HUD, Ladder Zero Sum ELO et mode sombre Prestige.",
+  "requestFramePermissions": []
+}
