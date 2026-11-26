@@ -1,0 +1,96 @@
+GDD Technique & Architecture : Zero Sum Arena (UEFN)
+1. Vision Globale et Piliers du Projet
+Nom du jeu : Zero Sum Arena
+Inspirations : Battlerite, Bloodline Champions, World of Warcraft Arena.
+Concept : Arènes compétitives pures (1v1, 2v2, 4v4) basées sur la synergie de groupe, l'optimisation de builds (draft) et la maîtrise mécanique.
+Modèle Économique : 100% Free-to-Play, monétisation via l'engagement d'Epic Games. Aucun Pay-to-Win ou microtransaction de progression.
+Direction Artistique (UI) : Minimaliste, géométrique, typographie stricte (sans-serif), jeu sur les contrastes (thèmes clair/sombre), inspiré du web design moderne.
+---
+2. Boucle de Rétention et "Addiction Saine"
+Pour maximiser les revenus liés à l'engagement (temps de jeu et connexions quotidiennes), le jeu déploie plusieurs systèmes psychologiques sans casser l'équité compétitive.
+A. Le Ladder (Système de Ligues ELO)
+L'interface affiche un rang prestigieux plutôt qu'un simple chiffre brut. Le calcul est "Zero Sum" (l'équipe gagnante absorbe une fraction du MMR de l'équipe perdante).
+Rangs : Fer, Bronze, Argent, Or, Diamant.
+Rang Ultime : Hexproof (Top 1% des joueurs, intouchables).
+En 2v2 et 4v4, l'algorithme utilise la moyenne de l'ELO de l'équipe pour le matchmaking via le système interne (SBMM) d'Epic.
+B. L'Économie Double
+Arena Points (Progression Gameplay) : Gagnés en jouant. Utilisés entre les rounds dans la boutique (Draft) pour acheter des armes, des compétences (Perks) ou modifier ses statistiques (Tank, Healer, DPS).
+Prestige Tokens (Cosmétique & Flex) : Monnaie rare gagnée en montant en ligue et via les quêtes. Utilisée pour débloquer des titres ("Le Fier") et des thèmes d'interface utilisateur (UI).
+C. Le Système de Quêtes (FOMO Positif)
+First Win of the Day : La première victoire du jour octroie +100% d'Arena Points.
+Quêtes Quotidiennes : Ex: "Gagner 3 matchs en 2v2".
+Quêtes de Maîtrise : Ex: "Gagner un round complet sans subir un seul point de dégât (Zero Sum)".
+---
+3. Architecture des Données (Backend Verse)
+Le projet utilise une architecture fortement typée. Les données sont modélisées de manière stricte avec le modificateur `<persistable>` pour garantir la sauvegarde d'une session à l'autre.
+```verse
+using { /EpicGames.com/Temporary/UI }
+using { /Verse.org/Simulation }
+
+# Structure d'une quête individuelle
+quest_data := class<persistable>:
+    var QuestID: string = ""
+    var TargetValue: int = 0
+    var CurrentProgress: int = 0
+    var IsCompleted: logic = false
+
+# Profil persistant du joueur
+player_profile := class<persistable>:
+    # Métriques Compétitives
+    var Version: int = 1
+    var MMR: float = 1200.0
+    var RankTier: int = 1 # 1=Fer ... 6=Hexproof
+    var TotalWins: int = 0
+    
+    # Économie
+    var ArenaPoints: int = 0
+    var PrestigeTokens: int = 0
+    
+    # État de progression
+    var UnlockedPerks: []string = array{}
+    var ActiveQuests: []quest_data = array{}
+    
+    # Customisation UI (Prestige)
+    var UITheme: string = "LightMode" # Peut être changé en "DarkMode" si débloqué
+```
+---
+4. Architecture Système et Machine à États (State Machine)
+La logique de l'île est pilotée par un `GameManager` qui séquence la partie.
+State_Initialization :
+Chargement asynchrone des profils `<persistable>`.
+Décompte des joueurs (2, 4 ou 8) pour router le match vers la bonne arène physique sur la carte.
+State_ShopPhase (Draft / Deckbuilding) :
+Affichage du Canvas UI (Shop).
+HUD de Synergie : En 2v2/4v4, l'UI affiche les choix de loadout des alliés en temps réel (ex: voir que le Joueur 2 achète des auras de soin permet au Joueur 1 d'acheter un build de Tank).
+State_Combat :
+Téléportation des joueurs dans l'arène (1v1 Alpha, 4v4 Beta).
+Application des loadouts (via Item Granter Devices et Class Designers).
+Le `QuestManager` écoute silencieusement les événements (dégâts, soins) via une architecture pub/sub pour mettre à jour les quêtes sans polluer la boucle de combat.
+State_Resolution :
+Détection de l'anéantissement de l'équipe adverse.
+Calcul du nouvel ELO.
+Sauvegarde des profils.
+---
+5. UI / Frontend (Verse Canvas)
+À l'opposé des cartes Fortnite classiques, l'interface sera le point fort de Zero Sum Arena.
+Party HUD (En jeu) : Un affichage propre sur la gauche de l'écran avec les barres de vie des alliés et le cooldown de leur compétence ultime.
+Boutique de Draft : Menus dessinés en Verse Canvas. Transparence, grilles géométriques, boutons sans fioritures.
+Le "Dark Mode" (Prestige ultime) : Le mode sombre de la boutique est la récompense ultime (coûtant des milliers de Prestige Tokens), réservé aux "tryharders".
+---
+6. Roadmap de Développement
+Phase 1 : Core Backend & MVP 1v1
+[ ] Construire l'arène 1v1 (Greybox).
+[ ] Coder la classe `player_profile` et s'assurer de la persistance (sauvegarde/chargement).
+[ ] Coder la boucle de jeu de base : Spawn -> Combat -> Mort -> Respawn.
+Phase 2 : Draft, Économie & Classes
+[ ] Coder l'UI de la Boutique via Verse Canvas.
+[ ] Créer 3 archétypes de départ (DPS, Tank, Support) via le Class Designer.
+[ ] Relier les achats en UI aux inventaires en jeu (Item Granters).
+Phase 3 : Multijoueur, Ladder & Synergie
+[ ] Construire les arènes 2v2 et 4v4 (plus grandes, avec gestion des lignes de vue).
+[ ] Créer le "Party HUD" pour la santé des alliés.
+[ ] Implémenter l'algorithme "Zero Sum" basé sur les moyennes d'équipes.
+Phase 4 : Rétention & Polish (LiveOps)
+[ ] Implémenter le `QuestManager` asynchrone (First Win of the Day, Quotidiennes).
+[ ] Ajouter la boutique de Prestige et coder le Dark Mode de l'UI.
+[ ] Phase de test QA (équilibrage des armes et des buffs d'arène).
